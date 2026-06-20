@@ -127,9 +127,6 @@ npm run start
 | `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` | ⬜ | Có thì dùng Google Maps; bỏ trống thì dùng OpenStreetMap. |
 | `NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID` | ⬜ | Map ID cho Advanced Marker (mặc định `DEMO_MAP_ID`). |
 
-> ⚠️ `.env.local` **không** được commit (đã có trong `.gitignore`). Tuyệt đối không
-> đẩy MONGODB_URI / key Cloudinary lên GitHub.
-
 ---
 
 ## 👮 Tài khoản Admin
