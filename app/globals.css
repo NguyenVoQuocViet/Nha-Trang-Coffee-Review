@@ -1,26 +1,391 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* Bật biến thể `dark:` theo class (dùng class "dark" trên <html>) thay vì theo
+   prefers-color-scheme, để có thể bật/tắt dark mode bằng nút. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ---- Design Tokens (Coastal Roast / Nha Trang Coffee Hub) ---- */
+@theme {
+  /* Brand Colors */
+  --color-primary: #33210d;
+  --color-on-primary: #ffffff;
+  --color-primary-container: #4b3621;
+  --color-on-primary-container: #bd9f83;
+  --color-primary-fixed: #fedcbe;
+  --color-primary-fixed-dim: #e1c1a4;
+  --color-on-primary-fixed: #291806;
+  --color-on-primary-fixed-variant: #59422c;
+  --color-inverse-primary: #e1c1a4;
+
+  --color-secondary: #00629e;
+  --color-on-secondary: #ffffff;
+  --color-secondary-container: #61b4fe;
+  --color-on-secondary-container: #004470;
+  --color-secondary-fixed: #cfe5ff;
+  --color-secondary-fixed-dim: #9acbff;
+  --color-on-secondary-fixed: #001d34;
+  --color-on-secondary-fixed-variant: #004a79;
+
+  --color-tertiary: #242516;
+  --color-on-tertiary: #ffffff;
+  --color-tertiary-container: #3a3b2a;
+  --color-on-tertiary-container: #a4a58f;
+  --color-tertiary-fixed: #e4e4cc;
+  --color-tertiary-fixed-dim: #c8c8b0;
+  --color-on-tertiary-fixed: #1b1d0e;
+  --color-on-tertiary-fixed-variant: #474836;
+
+  --color-error: #ba1a1a;
+  --color-on-error: #ffffff;
+  --color-error-container: #ffdad6;
+  --color-on-error-container: #93000a;
+
+  --color-surface: #f8f9fa;
+  --color-on-surface: #191c1d;
+  --color-surface-variant: #e1e3e4;
+  --color-on-surface-variant: #4e453d;
+  --color-surface-container-lowest: #ffffff;
+  --color-surface-container-low: #f3f4f5;
+  --color-surface-container: #edeeef;
+  --color-surface-container-high: #e7e8e9;
+  --color-surface-container-highest: #e1e3e4;
+  --color-surface-bright: #f8f9fa;
+  --color-surface-dim: #d9dadb;
+  --color-surface-tint: #725a42;
+
+  --color-outline: #80756c;
+  --color-outline-variant: #d2c4ba;
+
+  --color-inverse-surface: #2e3132;
+  --color-inverse-on-surface: #f0f1f2;
+  --color-background: #f8f9fa;
+  --color-on-background: #191c1d;
+
+  /* NOTE: Do NOT add named spacing keys like --spacing-md / --spacing-lg / --spacing-xl here.
+     In Tailwind v4 the spacing namespace also feeds the width utilities (max-w, min-w, w),
+     so a token like --spacing-lg of 32px would hijack the `max-w-lg` class (giving 32px) and
+     collapse text into a 1-2 character vertical column. The app uses the numeric spacing
+     scale (p-4, gap-8, etc.) which relies on the default Tailwind --spacing unit. */
+
+  /* Font families */
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-body-md: "Inter", sans-serif;
+  --font-body-lg: "Inter", sans-serif;
+  --font-label-sm: "Inter", sans-serif;
+  --font-label-lg: "Inter", sans-serif;
+  --font-title-lg: "Montserrat", sans-serif;
+  --font-headline-lg: "Montserrat", sans-serif;
+  --font-display-lg: "Montserrat", sans-serif;
+
+  /* Breakpoint riêng cho navbar: dưới 1360px chuyển sang menu hamburger để
+     thanh điều hướng (đặc biệt khi đăng nhập admin) không bị vỡ xuống dòng. */
+  --breakpoint-nav: 1360px;
+
+  /* Font sizes */
+  --text-label-sm: 11px;
+  --text-body-md: 14px;
+  --text-body-lg: 16px;
+  --text-label-lg: 14px;
+  --text-title-lg: 22px;
+  --text-headline-lg: 32px;
+  --text-display-lg: 57px;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+/* ---- Global Styles ---- */
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+  body {
+    background-color: var(--color-background);
+    color: var(--color-on-background);
+    font-family: "Inter", sans-serif;
+    font-size: 14px;
+    line-height: 20px;
+    transition: background-color 0.3s ease, color 0.3s ease;
+  }
+
+  .material-symbols-outlined {
+    font-variation-settings: "FILL" 0, "wght" 400, "GRAD" 0, "opsz" 24;
+    display: inline-block;
+    vertical-align: middle;
+    font-size: 24px;
+    line-height: 1;
+  }
+
+  * {
+    box-sizing: border-box;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* ---- Keyframe Animations ---- */
+@keyframes fadeSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes shimmer {
+  from { background-position: -200% 0; }
+  to { background-position: 200% 0; }
+}
+
+@keyframes pulse-soft {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+@keyframes slideHeroText {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes heroProgress {
+  from { width: 0%; }
+  to { width: 100%; }
+}
+
+/* ---- Component Styles ---- */
+@layer components {
+  /* Glassmorphism cards */
+  .glass-card {
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+  }
+
+  .glass-panel {
+    background: rgba(248, 249, 250, 0.8);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-right: 1px solid rgba(210, 196, 186, 0.3);
+  }
+
+  /* Premium card hover lift */
+  .card-hover {
+    transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+                box-shadow 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+                border-color 0.2s ease;
+  }
+  .card-hover:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 24px 48px -12px rgba(51, 33, 13, 0.14),
+                0 8px 16px -6px rgba(51, 33, 13, 0.06);
+  }
+
+  /* Button press effect */
+  .btn-press {
+    transition: transform 0.15s cubic-bezier(0.16, 1, 0.3, 1),
+                opacity 0.15s ease;
+  }
+  .btn-press:hover {
+    opacity: 0.92;
+  }
+  .btn-press:active {
+    transform: scale(0.97) translateY(1px);
+  }
+
+  /* Stagger entrance animations */
+  .animate-slide-up {
+    animation: fadeSlideIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  .animate-slide-up-delay-1 { animation-delay: 80ms; }
+  .animate-slide-up-delay-2 { animation-delay: 160ms; }
+  .animate-slide-up-delay-3 { animation-delay: 240ms; }
+  .animate-slide-up-delay-4 { animation-delay: 320ms; }
+
+  /* Shimmer skeleton loader */
+  .skeleton-shimmer {
+    background: linear-gradient(
+      90deg,
+      #e7e8e9 25%,
+      #f3f4f5 50%,
+      #e7e8e9 75%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+  }
+
+  /* Scrollbar utilities */
+  .hide-scrollbar::-webkit-scrollbar { display: none; }
+  .hide-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+  .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #d2c4ba;
+    border-radius: 10px;
+  }
+
+  /* Ranking number */
+  .ranking-number {
+    -webkit-text-stroke: 2px rgba(51, 33, 13, 0.25);
+    color: transparent;
+    font-size: 4rem;
+    line-height: 1;
+    font-weight: 900;
+    font-family: "Montserrat", sans-serif;
+    min-width: 3rem;
+    flex-shrink: 0;
+  }
+
+  /* Focus ring */
+  .focus-ring:focus-visible {
+    outline: 2px solid #33210d;
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  /* Hero slider transition */
+  .hero-slide-enter {
+    animation: fadeIn 0.7s ease both;
+  }
+
+  /* Interactive image hover */
+  .img-hover-zoom {
+    overflow: hidden;
+  }
+  .img-hover-zoom img {
+    transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .img-hover-zoom:hover img {
+    transform: scale(1.06);
+  }
+
+  /* Tag pill */
+  .tag-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 12px;
+    border-radius: 9999px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    transition: background-color 0.2s ease, color 0.2s ease;
+  }
+
+  /* Gradient text */
+  .text-gradient-primary {
+    background: linear-gradient(135deg, #33210d 0%, #725a42 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  /* Active nav link indicator */
+  .nav-link-active::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background-color: #33210d;
+    border-radius: 1px;
+  }
+}
+
+/* ---- Dark Mode ---- */
+/* Ghi đè các design token khi <html> có class "dark". Vì mọi utility (bg-*,
+   text-*, border-*) đều dùng var(--color-*), việc đổi biến ở đây sẽ áp dụng dark
+   mode cho toàn bộ giao diện dùng token. */
+.dark {
+  color-scheme: dark;
+
+  --color-primary: #e7c1a0;
+  --color-on-primary: #45290f;
+  --color-primary-container: #5d4226;
+  --color-on-primary-container: #fedcbe;
+  --color-inverse-primary: #33210d;
+  --color-surface-tint: #e7c1a0;
+
+  --color-secondary: #9acbff;
+  --color-on-secondary: #00344f;
+  --color-secondary-container: #004a78;
+  --color-on-secondary-container: #cfe5ff;
+
+  --color-tertiary: #c8c8b0;
+  --color-on-tertiary: #30311f;
+  --color-tertiary-container: #474836;
+  --color-on-tertiary-container: #e4e4cc;
+
+  --color-error: #ffb4ab;
+  --color-on-error: #690005;
+  --color-error-container: #93000a;
+  --color-on-error-container: #ffdad6;
+
+  /* Nền tối nhất, các "container" sáng dần lên trên nền -> card nổi rõ, không
+     bị chìm vào nền. */
+  --color-surface: #14110d;
+  --color-on-surface: #ece6dd;
+  --color-surface-variant: #4e453d;
+  --color-on-surface-variant: #cdbfb2;
+  --color-surface-container-lowest: #1c1712;
+  --color-surface-container-low: #221d16;
+  --color-surface-container: #27211a;
+  --color-surface-container-high: #322b22;
+  --color-surface-container-highest: #3d352b;
+  --color-surface-bright: #413931;
+  --color-surface-dim: #100d0a;
+
+  --color-outline: #9b8e81;
+  --color-outline-variant: #564d44;
+
+  --color-inverse-surface: #ece6dd;
+  --color-inverse-on-surface: #322c26;
+  --color-background: #14110d;
+  --color-on-background: #ece6dd;
+}
+
+/* Điều chỉnh các thành phần dùng màu hardcode cho hợp nền tối */
+.dark .glass-card {
+  background: rgba(32, 28, 23, 0.7);
+  border-color: rgba(255, 255, 255, 0.06);
+}
+
+.dark .glass-panel {
+  background: rgba(21, 18, 14, 0.85);
+  border-right-color: rgba(255, 255, 255, 0.06);
+}
+
+.dark .skeleton-shimmer {
+  background: linear-gradient(90deg, #201c17 25%, #2b2620 50%, #201c17 75%);
+  background-size: 200% 100%;
+}
+
+.dark .custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #4e453d;
+}
+
+.dark .ranking-number {
+  -webkit-text-stroke-color: rgba(231, 193, 160, 0.3);
+}
+
+.dark .text-gradient-primary {
+  background: linear-gradient(135deg, #e7c1a0 0%, #cda37e 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
