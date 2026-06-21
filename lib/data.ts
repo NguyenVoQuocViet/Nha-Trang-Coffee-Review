@@ -49,6 +49,15 @@ function serializeCafe(doc: LeanCafe): CafeType {
 }
 
 function serializeReview(doc: LeanReview): ReviewType {
+  const helpfulUserIds = doc.helpfulUserIds ?? [];
+  const replies = (doc.replies ?? []) as Array<{
+    _id: mongoose.Types.ObjectId;
+    userId: string;
+    userName: string;
+    userAvatar?: string;
+    comment: string;
+    createdAt?: Date;
+  }>;
   return {
     id: String(doc._id),
     cafeId: String(doc.cafeId),
@@ -58,6 +67,16 @@ function serializeReview(doc: LeanReview): ReviewType {
     rating: doc.rating,
     comment: doc.comment,
     createdAt: toISO(doc.createdAt),
+    helpfulCount: helpfulUserIds.length,
+    helpfulUserIds,
+    replies: replies.map((r) => ({
+      id: String(r._id),
+      userId: r.userId,
+      userName: r.userName,
+      userAvatar: r.userAvatar ?? undefined,
+      comment: r.comment,
+      createdAt: toISO(r.createdAt),
+    })),
   };
 }
 
@@ -217,6 +236,62 @@ export async function addReview(input: AddReviewInput): Promise<ReviewType> {
   const doc = await Review.create(input);
   await recomputeCafeRating(input.cafeId);
   return serializeReview(doc.toObject() as LeanReview);
+}
+
+/**
+ * Xoá một đánh giá (dùng cho admin) rồi tính lại điểm trung bình của quán.
+ * Trả về cafeId để caller revalidate đúng trang quán.
+ */
+export async function deleteReview(reviewId: string): Promise<string | null> {
+  if (!mongoose.isValidObjectId(reviewId)) return null;
+  await dbConnect();
+  const doc = await Review.findByIdAndDelete(reviewId).lean<LeanReview>();
+  if (!doc) return null;
+  const cafeId = String(doc.cafeId);
+  await recomputeCafeRating(cafeId);
+  return cafeId;
+}
+
+/**
+ * Bật/tắt trạng thái "Hữu ích" của một người dùng với một đánh giá.
+ * Dùng $addToSet/$pull để tránh trùng lặp userId.
+ */
+export async function toggleHelpful(
+  reviewId: string,
+  userId: string
+): Promise<boolean> {
+  if (!mongoose.isValidObjectId(reviewId)) return false;
+  await dbConnect();
+  const review = await Review.findById(reviewId).select('helpfulUserIds');
+  if (!review) return false;
+  const already = (review.helpfulUserIds ?? []).includes(userId);
+  await Review.findByIdAndUpdate(
+    reviewId,
+    already
+      ? { $pull: { helpfulUserIds: userId } }
+      : { $addToSet: { helpfulUserIds: userId } }
+  );
+  return true;
+}
+
+export interface AddReplyInput {
+  userId: string;
+  userName: string;
+  userAvatar?: string;
+  comment: string;
+}
+
+/** Thêm một phản hồi vào đánh giá. */
+export async function addReply(
+  reviewId: string,
+  input: AddReplyInput
+): Promise<boolean> {
+  if (!mongoose.isValidObjectId(reviewId)) return false;
+  await dbConnect();
+  const res = await Review.findByIdAndUpdate(reviewId, {
+    $push: { replies: input },
+  });
+  return Boolean(res);
 }
 
 /**

@@ -11,6 +11,9 @@ import {
 } from './auth';
 import {
   addReview,
+  deleteReview,
+  toggleHelpful,
+  addReply,
   createCafe,
   updateCafe,
   deleteCafe,
@@ -135,6 +138,72 @@ export async function addReviewAction(_prevState: unknown, formData: FormData) {
   // addReview đã tự tính lại rating trung bình của quán.
   revalidateCafeSurfaces(cafeId);
   return { success: true };
+}
+
+export async function deleteReviewAction(
+  reviewId: string,
+  cafeId: string
+): Promise<void> {
+  const session = await getSession();
+  if (!session || session.role !== 'admin') return;
+
+  try {
+    await deleteReview(reviewId);
+  } catch (error) {
+    console.error('deleteReviewAction error:', error);
+  }
+
+  revalidateCafeSurfaces(cafeId);
+}
+
+export async function toggleHelpfulAction(
+  reviewId: string,
+  cafeId: string
+): Promise<{ error?: string }> {
+  const session = await getSession();
+  if (!session) {
+    return { error: 'Bạn cần đăng nhập để đánh giá hữu ích.' };
+  }
+
+  try {
+    await toggleHelpful(reviewId, session.userId);
+  } catch (error) {
+    console.error('toggleHelpfulAction error:', error);
+    return { error: 'Không thể cập nhật. Vui lòng thử lại.' };
+  }
+
+  revalidatePath(`/cafe/${cafeId}`);
+  return {};
+}
+
+export async function addReplyAction(
+  reviewId: string,
+  cafeId: string,
+  comment: string
+): Promise<{ error?: string }> {
+  const session = await getSession();
+  if (!session) {
+    return { error: 'Bạn cần đăng nhập để phản hồi.' };
+  }
+
+  const trimmed = comment?.trim();
+  if (!trimmed) {
+    return { error: 'Vui lòng nhập nội dung phản hồi.' };
+  }
+
+  try {
+    await addReply(reviewId, {
+      userId: session.userId,
+      userName: session.name,
+      comment: trimmed,
+    });
+  } catch (error) {
+    console.error('addReplyAction error:', error);
+    return { error: 'Không thể gửi phản hồi. Vui lòng thử lại.' };
+  }
+
+  revalidatePath(`/cafe/${cafeId}`);
+  return {};
 }
 
 /* --------------------------------- Cafes --------------------------------- */

@@ -16,7 +16,7 @@ const CATEGORIES = [
   { label: 'Làm việc', icon: 'laptop_mac', match: ['làm việc', 'work', 'wifi', 'workspace', 'học bài'] },
   { label: 'Yên tĩnh', icon: 'menu_book', match: ['yên tĩnh', 'quiet', 'yên'] },
   { label: 'Sân vườn', icon: 'filter_vintage', match: ['sân vườn', 'garden', 'vườn'] },
-  { label: 'Rang xay', icon: 'local_fire_department', match: ['rang xay', 'artisanal', 'roast', 'hand drip', 'pour over', 'specialty', 'rang'] },
+  { label: 'Tán gẫu', icon: 'forum', match: ['tán gẫu', 'tan gau', 'chat', 'trò chuyện', 'gặp gỡ', 'hangout', 'tụ tập'] },
   { label: 'Học bài', icon: 'school', match: ['học bài', 'study', 'studying', 'self-study'] },
   { label: 'Chơi game', icon: 'sports_esports', match: ['chơi game', 'game', 'gaming', 'esport', 'console'] },
   { label: 'Chơi bài', icon: 'playing_cards', match: ['chơi bài', 'cards', 'board game', 'boardgame', 'tụ tập'] },

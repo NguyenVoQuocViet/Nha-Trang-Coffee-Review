@@ -7,6 +7,7 @@ import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import CoffeeRating from '@/components/CoffeeRating';
 import ReviewForm from './ReviewForm';
+import ReviewItem from './ReviewItem';
 import GoogleMapWidget from '@/components/GoogleMapWidget';
 import CafeGallery from '@/components/CafeGallery';
 
@@ -237,37 +238,14 @@ export default async function CafeDetailPage({ params }: Props) {
                   </p>
                 ) : (
                   reviews.map((review) => (
-                    <div key={review.id} className="flex gap-4">
-                      <div className="w-12 h-12 rounded-full bg-primary-container flex items-center justify-center shrink-0 text-on-primary-container font-bold text-sm overflow-hidden">
-                        {review.userAvatar ? (
-                          <img src={review.userAvatar} alt={review.userName} className="w-full h-full object-cover" />
-                        ) : (
-                          review.userName.charAt(0).toUpperCase()
-                        )}
-                      </div>
-                      <div className="flex-1 space-y-2">
-                        <div className="flex items-center justify-between">
-                          <h5 className="font-bold text-primary text-sm">{review.userName}</h5>
-                          <span className="text-xs text-on-surface-variant">
-                            {new Date(review.createdAt).toLocaleDateString('vi-VN')}
-                          </span>
-                        </div>
-                        <CoffeeRating value={review.rating} size="sm" />
-                        <p className="text-on-surface-variant text-sm leading-relaxed">
-                          {review.comment}
-                        </p>
-                        <div className="flex items-center gap-4 pt-1">
-                          <button className="flex items-center gap-1 text-xs text-on-surface-variant hover:text-primary transition-colors">
-                            <span className="material-symbols-outlined text-base">thumb_up</span>
-                            Hữu ích
-                          </button>
-                          <button className="flex items-center gap-1 text-xs text-on-surface-variant hover:text-primary transition-colors">
-                            <span className="material-symbols-outlined text-base">reply</span>
-                            Phản hồi
-                          </button>
-                        </div>
-                      </div>
-                    </div>
+                    <ReviewItem
+                      key={review.id}
+                      review={review}
+                      cafeId={cafe.id}
+                      currentUserId={session?.userId}
+                      isAdmin={session?.role === 'admin'}
+                      isLoggedIn={Boolean(session)}
+                    />
                   ))
                 )}
               </div>

@@ -33,6 +33,15 @@ export interface Cafe {
   status: 'approved' | 'pending' | 'rejected';
 }
 
+export interface ReviewReply {
+  id: string;
+  userId: string;
+  userName: string;
+  userAvatar?: string;
+  comment: string;
+  createdAt: string;
+}
+
 export interface Review {
   id: string;
   cafeId: string;
@@ -42,4 +51,7 @@ export interface Review {
   rating: number;
   comment: string;
   createdAt: string;
+  helpfulCount: number;
+  helpfulUserIds: string[];
+  replies: ReviewReply[];
 }

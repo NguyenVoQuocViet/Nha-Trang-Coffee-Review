@@ -12,7 +12,7 @@ const CATEGORIES = [
   { label: 'Làm việc', match: ['làm việc', 'work', 'wifi', 'workspace', 'học bài'] },
   { label: 'Yên tĩnh', match: ['yên tĩnh', 'quiet', 'yên'] },
   { label: 'Sân vườn', match: ['sân vườn', 'garden', 'vườn'] },
-  { label: 'Rang xay', match: ['rang xay', 'artisanal', 'roast', 'hand drip', 'pour over', 'specialty', 'rang'] },
+  { label: 'Tán gẫu', match: ['tán gẫu', 'tan gau', 'chat', 'trò chuyện', 'gặp gỡ', 'hangout', 'tụ tập'] },
   { label: 'Học bài', match: ['học bài', 'study', 'studying', 'self-study'] },
   { label: 'Chơi game', match: ['chơi game', 'game', 'gaming', 'esport', 'console'] },
   { label: 'Chơi bài', match: ['chơi bài', 'cards', 'board game', 'boardgame', 'tụ tập'] },
