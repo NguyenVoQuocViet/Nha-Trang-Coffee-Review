@@ -55,7 +55,7 @@ export default function CafeGallery({ images, name }: CafeGalleryProps) {
             alt={name}
           />
         </button>
-        {images.slice(1, 4).map((img, i) => (
+        {images.slice(1, 5).map((img, i) => (
           <button
             type="button"
             key={i}

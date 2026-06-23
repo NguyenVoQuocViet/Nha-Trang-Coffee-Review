@@ -12,8 +12,11 @@ const nextConfig: NextConfig = {
   experimental: {
     serverActions: {
       // Mặc định body của Server Action chỉ 1MB -> upload nhiều ảnh sẽ vượt giới
-      // hạn (lỗi 413 "Body exceeded 1 MB limit"). Nâng lên cho phép gửi kèm ảnh.
-      bodySizeLimit: '25mb',
+      // hạn (lỗi 413 "Body exceeded ... limit") và trang gửi bài bị "chết" lặng lẽ.
+      // Form cho phép tối đa 5 ảnh x 10MB = 50MB, nên nâng giới hạn lên có dư địa.
+      // Lưu ý: kích thước/số lượng ảnh còn được chặn ở client (AddCafeClient.tsx)
+      // bằng MAX_IMAGES / MAX_FILE_MB — hai nơi này phải khớp nhau.
+      bodySizeLimit: '60mb',
     },
   },
 };

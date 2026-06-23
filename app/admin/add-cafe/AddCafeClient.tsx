@@ -11,6 +11,11 @@ const DISTRICTS = NHA_TRANG_AREAS;
 
 const STEP_LABELS = ['Thông tin cơ bản', 'Chi tiết & Hình ảnh', 'Xác nhận'];
 
+// Giới hạn ảnh: phải khớp với `bodySizeLimit` của Server Action trong next.config.ts.
+// Vượt quá sẽ khiến request bị từ chối (lỗi 413) và trang gửi bài bị "chết" lặng lẽ.
+const MAX_IMAGES = 5;
+const MAX_FILE_MB = 10;
+
 export default function AddCafeClient() {
   const [step, setStep] = useState(0);
   const [state, action, pending] = useActionState<AddCafeState, FormData>(addCafeAction, undefined);
@@ -27,12 +32,27 @@ export default function AddCafeClient() {
   const [lat, setLat] = useState('12.2389');
   const [lng, setLng] = useState('109.1967');
   const [images, setImages] = useState<File[]>([]);
+  const [imageError, setImageError] = useState('');
   const [dragOver, setDragOver] = useState(false);
 
   function addFiles(list: FileList | File[] | null) {
     if (!list) return;
-    const picked = Array.from(list).filter((f) => f.type.startsWith('image/'));
-    setImages((prev) => [...prev, ...picked].slice(0, 5));
+    const incoming = Array.from(list);
+    const onlyImages = incoming.filter((f) => f.type.startsWith('image/'));
+    const valid = onlyImages.filter((f) => f.size <= MAX_FILE_MB * 1024 * 1024);
+    const tooLargeCount = onlyImages.length - valid.length;
+
+    setImages((prev) => {
+      const merged = [...prev, ...valid];
+
+      const msgs: string[] = [];
+      if (onlyImages.length < incoming.length) msgs.push('Chỉ chấp nhận tệp hình ảnh.');
+      if (tooLargeCount > 0) msgs.push(`Mỗi ảnh tối đa ${MAX_FILE_MB}MB (đã bỏ qua ${tooLargeCount} ảnh quá lớn).`);
+      if (merged.length > MAX_IMAGES) msgs.push(`Chỉ được tải lên tối đa ${MAX_IMAGES} ảnh.`);
+      setImageError(msgs.join(' '));
+
+      return merged.slice(0, MAX_IMAGES);
+    });
   }
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -278,7 +298,7 @@ export default function AddCafeClient() {
                   <p className="text-sm text-on-surface-variant text-center">
                     Kéo và thả ảnh vào đây hoặc <span className="text-primary font-bold">chọn tệp</span>
                   </p>
-                  <p className="text-xs text-outline mt-1">Hỗ trợ JPG, PNG (Tối đa 10MB mỗi ảnh)</p>
+                  <p className="text-xs text-outline mt-1">Hỗ trợ JPG, PNG (tối đa {MAX_FILE_MB}MB mỗi ảnh, {MAX_IMAGES} ảnh)</p>
                   <input
                     type="file"
                     accept="image/*"
@@ -290,6 +310,10 @@ export default function AddCafeClient() {
                     }}
                   />
                 </label>
+
+                {imageError && (
+                  <p className="text-xs font-medium text-error">{imageError}</p>
+                )}
 
                 {images.length > 0 && (
                   <div className="flex flex-wrap gap-3 mt-3">
@@ -305,9 +329,10 @@ export default function AddCafeClient() {
                         />
                         <button
                           type="button"
-                          onClick={() =>
-                            setImages((prev) => prev.filter((_, idx) => idx !== i))
-                          }
+                          onClick={() => {
+                            setImages((prev) => prev.filter((_, idx) => idx !== i));
+                            setImageError('');
+                          }}
                           className="absolute top-0.5 right-0.5 w-5 h-5 rounded-full bg-black/60 text-white flex items-center justify-center text-sm leading-none"
                           aria-label="Xoá ảnh"
                         >
