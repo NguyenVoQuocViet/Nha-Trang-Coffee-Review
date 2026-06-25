@@ -21,6 +21,7 @@ import {
   getCafeById,
 } from './data';
 import { deleteImagesByUrl } from './cloudinary';
+import type { CafeFormPayload, CafeUpdatePayload } from './cafeFormPayload';
 
 function revalidateCafeSurfaces(cafeId?: string) {
   revalidatePath('/');
@@ -208,49 +209,44 @@ export async function addReplyAction(
 
 /* --------------------------------- Cafes --------------------------------- */
 
-// Ảnh giờ được upload TRỰC TIẾP từ trình duyệt lên Cloudinary (xem
+// Ảnh được upload TRỰC TIẾP từ trình duyệt lên Cloudinary (xem
 // lib/cloudinaryClient.ts) để né giới hạn ~4.5MB body của Vercel. Server Action
-// chỉ nhận lại mảng URL `secure_url` (vài KB chữ) dưới dạng JSON trong field
-// `imageUrls`, không còn nhận file nặng nữa.
-function parseImageUrls(formData: FormData): string[] {
-  const raw = formData.get('imageUrls');
-  if (typeof raw !== 'string' || !raw) return [];
-  try {
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-    return parsed.filter(
-      (u): u is string => typeof u === 'string' && u.trim().length > 0
-    );
-  } catch {
-    return [];
-  }
+// chỉ nhận lại mảng URL `secure_url` (vài KB chữ) — KHÔNG còn nhận File nhị phân.
+// Hàm này lọc phòng hờ để chắc chắn chỉ giữ lại các chuỗi URL hợp lệ.
+function sanitizeImageUrls(urls: unknown): string[] {
+  if (!Array.isArray(urls)) return [];
+  return urls.filter(
+    (u): u is string => typeof u === 'string' && u.trim().length > 0
+  );
 }
 
-export async function addCafeAction(_prevState: unknown, formData: FormData) {
+export async function addCafeAction(
+  _prevState: unknown,
+  payload: CafeFormPayload
+) {
   const session = await getSession();
   if (!session || session.role !== 'admin') {
     redirect('/');
   }
 
-  const name = (formData.get('name') as string)?.trim();
-  const address = (formData.get('address') as string)?.trim();
-  const description = (formData.get('description') as string)?.trim();
-  const district = (formData.get('district') as string)?.trim();
-  const priceRange = (formData.get('priceRange') as string) || '$$';
-  const openHours = (formData.get('openHours') as string) || '07:00 AM - 10:00 PM';
-  const phone = (formData.get('phone') as string) || '';
-  const lat = Number(formData.get('lat')) || 12.2388;
-  const lng = Number(formData.get('lng')) || 109.1967;
-  const tagsRaw = (formData.get('tags') as string) || '';
-  const tags = tagsRaw.split(',').map((t) => t.trim()).filter(Boolean);
+  const name = payload.name?.trim();
+  const address = payload.address?.trim();
+  const description = payload.description?.trim();
+  const district = payload.district?.trim();
+  const priceRange = payload.priceRange || '$$';
+  const openHours = payload.openHours || '07:00 AM - 10:00 PM';
+  const phone = payload.phone || '';
+  const lat = Number(payload.lat) || 12.2388;
+  const lng = Number(payload.lng) || 109.1967;
+  const tags = (payload.tags || '').split(',').map((t) => t.trim()).filter(Boolean);
 
   if (!name || !address || !description || !district) {
     return { error: 'Vui lòng điền đầy đủ thông tin quán (gồm cả khu vực).' };
   }
 
   try {
-    // 1) Ảnh đã được trình duyệt đẩy thẳng lên Cloudinary -> nhận lại mảng URL.
-    const images = parseImageUrls(formData);
+    // 1) Ảnh đã được trình duyệt đẩy thẳng lên Cloudinary -> chỉ còn mảng URL chữ.
+    const images = sanitizeImageUrls(payload.imageUrls);
 
     // 2) Lưu quán mới vào MongoDB với mảng URL ảnh từ Cloudinary.
     await createCafe({
@@ -277,24 +273,26 @@ export async function addCafeAction(_prevState: unknown, formData: FormData) {
   redirect('/admin');
 }
 
-export async function updateCafeAction(_prevState: unknown, formData: FormData) {
+export async function updateCafeAction(
+  _prevState: unknown,
+  payload: CafeUpdatePayload
+) {
   const session = await getSession();
   if (!session || session.role !== 'admin') {
     redirect('/');
   }
 
-  const id = (formData.get('id') as string)?.trim();
-  const name = (formData.get('name') as string)?.trim();
-  const address = (formData.get('address') as string)?.trim();
-  const description = (formData.get('description') as string)?.trim();
-  const district = (formData.get('district') as string)?.trim();
-  const priceRange = (formData.get('priceRange') as string) || '$$';
-  const openHours = (formData.get('openHours') as string) || '07:00 AM - 10:00 PM';
-  const phone = (formData.get('phone') as string) || '';
-  const lat = Number(formData.get('lat'));
-  const lng = Number(formData.get('lng'));
-  const tagsRaw = (formData.get('tags') as string) || '';
-  const tags = tagsRaw.split(',').map((t) => t.trim()).filter(Boolean);
+  const id = payload.id?.trim();
+  const name = payload.name?.trim();
+  const address = payload.address?.trim();
+  const description = payload.description?.trim();
+  const district = payload.district?.trim();
+  const priceRange = payload.priceRange || '$$';
+  const openHours = payload.openHours || '07:00 AM - 10:00 PM';
+  const phone = payload.phone || '';
+  const lat = Number(payload.lat);
+  const lng = Number(payload.lng);
+  const tags = (payload.tags || '').split(',').map((t) => t.trim()).filter(Boolean);
 
   if (!id) redirect('/admin');
   if (!name || !address || !description || !district) {
@@ -305,7 +303,7 @@ export async function updateCafeAction(_prevState: unknown, formData: FormData) 
   try {
     // Cho phép thay ảnh mới khi chỉnh sửa: trình duyệt đã upload thẳng lên
     // Cloudinary, ở đây chỉ nhận mảng URL (rỗng nghĩa là giữ nguyên ảnh cũ).
-    const newImages = parseImageUrls(formData);
+    const newImages = sanitizeImageUrls(payload.imageUrls);
 
     // Lưu lại ảnh cũ trước khi ghi đè để xoá khỏi Cloudinary sau đó.
     let oldImages: string[] = [];

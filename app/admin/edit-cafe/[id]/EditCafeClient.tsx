@@ -4,6 +4,7 @@ import { useState, useActionState, startTransition } from 'react';
 import Link from 'next/link';
 import { updateCafeAction, deleteCafeAction } from '@/lib/actions';
 import { uploadImagesToCloudinary } from '@/lib/cloudinaryClient';
+import type { CafeUpdatePayload } from '@/lib/cafeFormPayload';
 import { NHA_TRANG_AREAS } from '@/lib/constants';
 import LocationPicker from '@/components/LocationPicker';
 import type { Cafe } from '@/lib/mockData';
@@ -11,7 +12,7 @@ import type { Cafe } from '@/lib/mockData';
 type EditCafeState = { error?: string } | undefined;
 
 export default function EditCafeClient({ cafe }: { cafe: Cafe }) {
-  const [state, action, pending] = useActionState<EditCafeState, FormData>(
+  const [state, action, pending] = useActionState<EditCafeState, CafeUpdatePayload>(
     updateCafeAction,
     undefined
   );
@@ -67,20 +68,23 @@ export default function EditCafeClient({ cafe }: { cafe: Cafe }) {
       setUploading(false);
     }
 
-    const fd = new FormData();
-    fd.set('id', cafe.id);
-    fd.set('name', name);
-    fd.set('address', address);
-    fd.set('district', district);
-    fd.set('description', description);
-    fd.set('openHours', openHours);
-    fd.set('phone', phone);
-    fd.set('priceRange', priceRange);
-    fd.set('tags', tags);
-    fd.set('lat', lat);
-    fd.set('lng', lng);
-    fd.set('imageUrls', JSON.stringify(imageUrls));
-    startTransition(() => action(fd));
+    // Gửi OBJECT JSON thuần — CHỈ chữ + mảng URL ảnh, KHÔNG dùng FormData và
+    // KHÔNG đính kèm File nhị phân -> body gửi tới Vercel chỉ vài KB (hết lỗi 413).
+    const payload: CafeUpdatePayload = {
+      id: cafe.id,
+      name,
+      address,
+      district,
+      description,
+      openHours,
+      phone,
+      priceRange,
+      tags,
+      lat,
+      lng,
+      imageUrls,
+    };
+    startTransition(() => action(payload));
   }
 
   const inputClass =

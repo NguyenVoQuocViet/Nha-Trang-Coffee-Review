@@ -3,6 +3,7 @@
 import { useState, useActionState, startTransition } from 'react';
 import { addCafeAction } from '@/lib/actions';
 import { uploadImagesToCloudinary } from '@/lib/cloudinaryClient';
+import type { CafeFormPayload } from '@/lib/cafeFormPayload';
 import { NHA_TRANG_AREAS } from '@/lib/constants';
 import LocationPicker from '@/components/LocationPicker';
 
@@ -20,7 +21,7 @@ const MAX_FILE_MB = 10;
 
 export default function AddCafeClient() {
   const [step, setStep] = useState(0);
-  const [state, action, pending] = useActionState<AddCafeState, FormData>(addCafeAction, undefined);
+  const [state, action, pending] = useActionState<AddCafeState, CafeFormPayload>(addCafeAction, undefined);
 
   // Form fields
   const [name, setName] = useState('');
@@ -88,20 +89,23 @@ export default function AddCafeClient() {
       setUploading(false);
     }
 
-    // 2) Gửi Server Action với dữ liệu chữ + mảng URL ảnh (nhẹ, vài KB).
-    const fd = new FormData();
-    fd.set('name', name);
-    fd.set('address', address);
-    fd.set('district', district);
-    fd.set('description', description);
-    fd.set('openHours', openHours);
-    fd.set('phone', phone);
-    fd.set('priceRange', priceRange);
-    fd.set('tags', tags);
-    fd.set('lat', lat);
-    fd.set('lng', lng);
-    fd.set('imageUrls', JSON.stringify(imageUrls));
-    startTransition(() => action(fd));
+    // 2) Gửi Server Action bằng OBJECT JSON thuần — CHỈ chữ + mảng URL ảnh,
+    //    KHÔNG dùng FormData và KHÔNG đính kèm bất kỳ File nhị phân nào.
+    //    Nhờ vậy body gửi tới Vercel chỉ vài KB -> không bao giờ dính lỗi 413.
+    const payload: CafeFormPayload = {
+      name,
+      address,
+      district,
+      description,
+      openHours,
+      phone,
+      priceRange,
+      tags,
+      lat,
+      lng,
+      imageUrls,
+    };
+    startTransition(() => action(payload));
   }
 
   const progressPct = step === 0 ? '3%' : step === 1 ? '50%' : '100%';
