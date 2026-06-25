@@ -2,6 +2,7 @@
 
 import { useState, useActionState, startTransition } from 'react';
 import { addCafeAction } from '@/lib/actions';
+import { uploadImagesToCloudinary } from '@/lib/cloudinaryClient';
 import { NHA_TRANG_AREAS } from '@/lib/constants';
 import LocationPicker from '@/components/LocationPicker';
 
@@ -11,8 +12,9 @@ const DISTRICTS = NHA_TRANG_AREAS;
 
 const STEP_LABELS = ['Thông tin cơ bản', 'Chi tiết & Hình ảnh', 'Xác nhận'];
 
-// Giới hạn ảnh: phải khớp với `bodySizeLimit` của Server Action trong next.config.ts.
-// Vượt quá sẽ khiến request bị từ chối (lỗi 413) và trang gửi bài bị "chết" lặng lẽ.
+// Ảnh được upload TRỰC TIẾP từ trình duyệt lên Cloudinary (không qua Server Action),
+// nên không còn dính giới hạn ~4.5MB body của Vercel. Cloudinary unsigned preset
+// mặc định cho tối đa 10MB/ảnh, nên giữ MAX_FILE_MB = 10 cho khớp.
 const MAX_IMAGES = 5;
 const MAX_FILE_MB = 10;
 
@@ -35,6 +37,12 @@ export default function AddCafeClient() {
   const [imageError, setImageError] = useState('');
   const [dragOver, setDragOver] = useState(false);
 
+  // Trạng thái upload ảnh lên Cloudinary từ trình duyệt (trước khi gọi Server Action).
+  const [uploading, setUploading] = useState(false);
+  const [uploadDone, setUploadDone] = useState(0);
+  const [uploadTotal, setUploadTotal] = useState(0);
+  const [submitError, setSubmitError] = useState('');
+
   function addFiles(list: FileList | File[] | null) {
     if (!list) return;
     const incoming = Array.from(list);
@@ -55,8 +63,32 @@ export default function AddCafeClient() {
     });
   }
 
-  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    setSubmitError('');
+
+    // 1) Upload ảnh thẳng từ trình duyệt lên Cloudinary, thu lại mảng secure_url.
+    let imageUrls: string[] = [];
+    if (images.length > 0) {
+      setUploading(true);
+      setUploadDone(0);
+      setUploadTotal(images.length);
+      try {
+        imageUrls = await uploadImagesToCloudinary(images, (done, total) => {
+          setUploadDone(done);
+          setUploadTotal(total);
+        });
+      } catch (err) {
+        setUploading(false);
+        setSubmitError(
+          `Tải ảnh lên Cloudinary thất bại: ${(err as Error).message} Vui lòng thử lại.`
+        );
+        return;
+      }
+      setUploading(false);
+    }
+
+    // 2) Gửi Server Action với dữ liệu chữ + mảng URL ảnh (nhẹ, vài KB).
     const fd = new FormData();
     fd.set('name', name);
     fd.set('address', address);
@@ -68,8 +100,7 @@ export default function AddCafeClient() {
     fd.set('tags', tags);
     fd.set('lat', lat);
     fd.set('lng', lng);
-    // Đính kèm từng file ảnh để Server Action upload lên Cloudinary.
-    images.forEach((file) => fd.append('images', file));
+    fd.set('imageUrls', JSON.stringify(imageUrls));
     startTransition(() => action(fd));
   }
 
@@ -127,9 +158,16 @@ export default function AddCafeClient() {
       {/* Form */}
       <div className="bg-surface-container-lowest rounded-3xl p-6 md:p-12 shadow-sm border border-outline-variant/30">
         <form onSubmit={handleSubmit} className="space-y-8">
-          {state?.error && (
+          {(state?.error || submitError) && (
             <div className="p-4 bg-error-container text-on-error-container rounded-xl text-sm font-medium">
-              {state.error}
+              {submitError || state?.error}
+            </div>
+          )}
+
+          {uploading && (
+            <div className="flex items-center gap-3 p-4 bg-primary-fixed/40 text-primary rounded-xl text-sm font-medium">
+              <span className="material-symbols-outlined animate-spin text-lg">progress_activity</span>
+              Đang tải ảnh lên hệ thống đám mây... [{uploadDone}/{uploadTotal}]
             </div>
           )}
 
@@ -274,7 +312,7 @@ export default function AddCafeClient() {
                 />
               </div>
 
-              {/* Image upload (gửi thẳng lên Cloudinary qua Server Action) */}
+              {/* Image upload (trình duyệt đẩy thẳng lên Cloudinary khi submit) */}
               <div className="flex flex-col gap-2 md:col-span-2">
                 <label className="text-sm font-bold text-primary">Hình ảnh (tối đa 5 ảnh)</label>
                 <label
@@ -407,10 +445,14 @@ export default function AddCafeClient() {
             ) : (
               <button
                 type="submit"
-                disabled={pending}
+                disabled={pending || uploading}
                 className="px-8 py-3 rounded-xl bg-secondary text-on-secondary font-semibold text-sm shadow-md hover:shadow-lg active:scale-95 transition-all disabled:opacity-60"
               >
-                {pending ? 'Đang gửi...' : 'Gửi yêu cầu'}
+                {uploading
+                  ? `Đang tải ảnh... [${uploadDone}/${uploadTotal}]`
+                  : pending
+                  ? 'Đang gửi...'
+                  : 'Gửi yêu cầu'}
               </button>
             )}
           </div>

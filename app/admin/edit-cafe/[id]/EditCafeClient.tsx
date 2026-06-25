@@ -3,6 +3,7 @@
 import { useState, useActionState, startTransition } from 'react';
 import Link from 'next/link';
 import { updateCafeAction, deleteCafeAction } from '@/lib/actions';
+import { uploadImagesToCloudinary } from '@/lib/cloudinaryClient';
 import { NHA_TRANG_AREAS } from '@/lib/constants';
 import LocationPicker from '@/components/LocationPicker';
 import type { Cafe } from '@/lib/mockData';
@@ -28,14 +29,44 @@ export default function EditCafeClient({ cafe }: { cafe: Cafe }) {
   const [images, setImages] = useState<File[]>([]);
   const [dragOver, setDragOver] = useState(false);
 
+  // Trạng thái upload ảnh lên Cloudinary từ trình duyệt (trước khi gọi Server Action).
+  const [uploading, setUploading] = useState(false);
+  const [uploadDone, setUploadDone] = useState(0);
+  const [uploadTotal, setUploadTotal] = useState(0);
+  const [submitError, setSubmitError] = useState('');
+
   function addFiles(list: FileList | File[] | null) {
     if (!list) return;
     const picked = Array.from(list).filter((f) => f.type.startsWith('image/'));
     setImages((prev) => [...prev, ...picked].slice(0, 5));
   }
 
-  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    setSubmitError('');
+
+    // Nếu admin chọn ảnh mới: trình duyệt đẩy thẳng lên Cloudinary trước, lấy URL.
+    // Bỏ trống -> gửi mảng rỗng -> Server Action giữ nguyên ảnh cũ.
+    let imageUrls: string[] = [];
+    if (images.length > 0) {
+      setUploading(true);
+      setUploadDone(0);
+      setUploadTotal(images.length);
+      try {
+        imageUrls = await uploadImagesToCloudinary(images, (done, total) => {
+          setUploadDone(done);
+          setUploadTotal(total);
+        });
+      } catch (err) {
+        setUploading(false);
+        setSubmitError(
+          `Tải ảnh lên Cloudinary thất bại: ${(err as Error).message} Vui lòng thử lại.`
+        );
+        return;
+      }
+      setUploading(false);
+    }
+
     const fd = new FormData();
     fd.set('id', cafe.id);
     fd.set('name', name);
@@ -48,9 +79,7 @@ export default function EditCafeClient({ cafe }: { cafe: Cafe }) {
     fd.set('tags', tags);
     fd.set('lat', lat);
     fd.set('lng', lng);
-    // Nếu admin chọn ảnh mới, đính kèm để Server Action upload lên Cloudinary
-    // và thay thế mảng images cũ (bỏ trống thì giữ nguyên ảnh cũ).
-    images.forEach((file) => fd.append('images', file));
+    fd.set('imageUrls', JSON.stringify(imageUrls));
     startTransition(() => action(fd));
   }
 
@@ -77,9 +106,16 @@ export default function EditCafeClient({ cafe }: { cafe: Cafe }) {
 
       <div className="bg-surface-container-lowest rounded-3xl p-6 md:p-10 shadow-sm border border-outline-variant/30">
         <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {state?.error && (
+          {(state?.error || submitError) && (
             <div className="md:col-span-2 p-4 bg-error-container text-on-error-container rounded-xl text-sm font-medium">
-              {state.error}
+              {submitError || state?.error}
+            </div>
+          )}
+
+          {uploading && (
+            <div className="md:col-span-2 flex items-center gap-3 p-4 bg-primary-fixed/40 text-primary rounded-xl text-sm font-medium">
+              <span className="material-symbols-outlined animate-spin text-lg">progress_activity</span>
+              Đang tải ảnh lên hệ thống đám mây... [{uploadDone}/{uploadTotal}]
             </div>
           )}
 
@@ -278,10 +314,14 @@ export default function EditCafeClient({ cafe }: { cafe: Cafe }) {
             </Link>
             <button
               type="submit"
-              disabled={pending}
+              disabled={pending || uploading}
               className="px-8 py-3 rounded-xl bg-primary text-on-primary font-semibold text-sm shadow-md hover:shadow-lg active:scale-95 transition-all disabled:opacity-60"
             >
-              {pending ? 'Đang lưu...' : 'Lưu thay đổi'}
+              {uploading
+                ? `Đang tải ảnh... [${uploadDone}/${uploadTotal}]`
+                : pending
+                ? 'Đang lưu...'
+                : 'Lưu thay đổi'}
             </button>
           </div>
         </form>

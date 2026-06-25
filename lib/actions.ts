@@ -20,7 +20,7 @@ import {
   approveCafe,
   getCafeById,
 } from './data';
-import { uploadImageBuffer, deleteImagesByUrl } from './cloudinary';
+import { deleteImagesByUrl } from './cloudinary';
 
 function revalidateCafeSurfaces(cafeId?: string) {
   revalidatePath('/');
@@ -208,18 +208,22 @@ export async function addReplyAction(
 
 /* --------------------------------- Cafes --------------------------------- */
 
-async function uploadCafeImages(formData: FormData): Promise<string[]> {
-  const files = formData
-    .getAll('images')
-    .filter((f): f is File => f instanceof File && f.size > 0);
-
-  const urls: string[] = [];
-  for (const file of files) {
-    const buffer = Buffer.from(await file.arrayBuffer());
-    const url = await uploadImageBuffer(buffer, file.type);
-    urls.push(url);
+// Ảnh giờ được upload TRỰC TIẾP từ trình duyệt lên Cloudinary (xem
+// lib/cloudinaryClient.ts) để né giới hạn ~4.5MB body của Vercel. Server Action
+// chỉ nhận lại mảng URL `secure_url` (vài KB chữ) dưới dạng JSON trong field
+// `imageUrls`, không còn nhận file nặng nữa.
+function parseImageUrls(formData: FormData): string[] {
+  const raw = formData.get('imageUrls');
+  if (typeof raw !== 'string' || !raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter(
+      (u): u is string => typeof u === 'string' && u.trim().length > 0
+    );
+  } catch {
+    return [];
   }
-  return urls;
 }
 
 export async function addCafeAction(_prevState: unknown, formData: FormData) {
@@ -245,8 +249,8 @@ export async function addCafeAction(_prevState: unknown, formData: FormData) {
   }
 
   try {
-    // 1) Upload từng ảnh lên Cloudinary, lấy về secure_url tuyệt đối.
-    const images = await uploadCafeImages(formData);
+    // 1) Ảnh đã được trình duyệt đẩy thẳng lên Cloudinary -> nhận lại mảng URL.
+    const images = parseImageUrls(formData);
 
     // 2) Lưu quán mới vào MongoDB với mảng URL ảnh từ Cloudinary.
     await createCafe({
@@ -299,8 +303,9 @@ export async function updateCafeAction(_prevState: unknown, formData: FormData) 
 
   let updated;
   try {
-    // Cho phép thêm ảnh mới khi chỉnh sửa (nếu admin chọn tệp).
-    const newImages = await uploadCafeImages(formData);
+    // Cho phép thay ảnh mới khi chỉnh sửa: trình duyệt đã upload thẳng lên
+    // Cloudinary, ở đây chỉ nhận mảng URL (rỗng nghĩa là giữ nguyên ảnh cũ).
+    const newImages = parseImageUrls(formData);
 
     // Lưu lại ảnh cũ trước khi ghi đè để xoá khỏi Cloudinary sau đó.
     let oldImages: string[] = [];

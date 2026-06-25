@@ -9,16 +9,10 @@ const nextConfig: NextConfig = {
   devIndicators: {
     position: 'top-left',
   },
-  experimental: {
-    serverActions: {
-      // Mặc định body của Server Action chỉ 1MB -> upload nhiều ảnh sẽ vượt giới
-      // hạn (lỗi 413 "Body exceeded ... limit") và trang gửi bài bị "chết" lặng lẽ.
-      // Form cho phép tối đa 5 ảnh x 10MB = 50MB, nên nâng giới hạn lên có dư địa.
-      // Lưu ý: kích thước/số lượng ảnh còn được chặn ở client (AddCafeClient.tsx)
-      // bằng MAX_IMAGES / MAX_FILE_MB — hai nơi này phải khớp nhau.
-      bodySizeLimit: '60mb',
-    },
-  },
+  // Lưu ý: KHÔNG cần nâng `serverActions.bodySizeLimit` nữa. Ảnh được trình duyệt
+  // upload thẳng lên Cloudinary (lib/cloudinaryClient.ts), Server Action chỉ nhận
+  // lại mảng URL chữ (vài KB) nên không còn dính giới hạn ~4.5MB body của Vercel
+  // (lỗi 413 "Payload Too Large").
 };
 
 export default nextConfig;
